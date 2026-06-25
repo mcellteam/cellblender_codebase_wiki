@@ -1,0 +1,8 @@
+# Python bytecode from running wiki_check.py
+__pycache__/
+*.pyc
+
+# macOS
+.DS_Store
+
+# wiki_check.py stale-banner markers are committed intentionally (none by default)
