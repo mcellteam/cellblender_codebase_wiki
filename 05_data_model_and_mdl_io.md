@@ -308,7 +308,12 @@ This is the **standalone program** that turns a *full* data model (not just
 geometry) into complete MCell3 MDL. Its docstring notes it can assume it always
 receives a current data model because CellBlender upgrades first
 (`cellblender/mdl/data_model_to_mdl.py:19-27`). It is deliberately importable
-**outside Blender** (only stdlib imports) so it can run in a subprocess.
+**outside Blender** (no hard `bpy` dependency) so it can run in a subprocess.
+
+- A module-level **`has_blender`** flag (`:242-247`) is set by attempting
+  `import bpy`; it gates the in-Blender-only code paths — chiefly the **dynamic
+  geometry** export, which reaches into the live `context.scene.mcell`
+  (`:1369`, `:1377`, `:1395`, `:1428`, …). Non-Blender runs must keep it `False`.
 
 - Entry point **`write_mdl(dm, file_name, scene_name='Scene', ...)`**
   (`cellblender/mdl/data_model_to_mdl.py:997`). It branches on
@@ -323,10 +328,26 @@ receives a current data model because CellBlender upgrades first
   `:1019-1082`), dynamic geometry, and inserted user scripting
   (`write_export_scripting`, `:320`).
 - It has a `__main__` CLI: `python data_model_to_mdl.py <data_model_file> <mdl_base>`
-  reading pickle or JSON via `read_data_model` (`:2414-2447`).
+  reading pickle or JSON via `read_data_model` (`:2414-2447`). Running as
+  `__main__` **forces `has_blender = False`** (`:256-257`) — see the gotcha below.
 - Called in-process from `cellblender_simulation.py:899`
   (`data_model_to_mdl.write_mdl(...)`) and for engine selection via
   `requires_mcellr` (`:860`).
+
+> **Gotcha — a bare `import bpy` no longer proves we're inside CellBlender.** The
+> `bpy` PyPI wheel imports successfully in a plain headless Python, so the
+> `has_blender` probe (`:242-247`) can be `True` while **no CellBlender add-on is
+> registered and `context.scene.mcell` does not exist**. The standalone CLI (test
+> harness / `run_data_model_mcell.py`) then took the in-Blender dynamic-geometry
+> branch and crashed with `AttributeError: 'Scene' object has no attribute 'mcell'`
+> — this broke the 3 dynamic-geometry data-model tests (`0110`/`0120`/`0130`). Fix:
+> when the module runs as `__main__`, force `has_blender = False` (`:256-257`),
+> restoring the pre-`bpy`-install standalone behavior. A `__main__` gate is used
+> rather than a `hasattr(scene, 'mcell')` check because the module is imported at
+> add-on **registration** time, which would make such a check racy against
+> property-registration order. CellBlender **imports** this module (never executes
+> it as `__main__`), so its in-Blender path is unaffected. (commit `20192d1`,
+> branch `mcell4_dev`; verified on both the nanobind and pybind11 builds.)
 
 ### 5c. `mdl/run_data_model_mcell.py`
 
