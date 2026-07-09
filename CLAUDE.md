@@ -16,8 +16,7 @@ every doc is written **relative to a single anchor, `$ROOT`**, e.g. `cellblender
 **`$ROOT` is self-locating — it is the directory that contains both `cellblender/` and
 `cellblender_codebase_wiki/`, i.e. the parent of the folder this file lives in.** There is nothing
 to configure and no need to ask anyone: wherever the folder is cloned, `$ROOT` is "one level up"
-from this wiki directory. (On the machine these docs were authored, `$ROOT` happened to be a folder
-named `mcell_p313`, but the name is irrelevant — do not rely on it.)
+from this wiki directory. The root folder's name is irrelevant — do not rely on it.
 
 At the start of a session, resolve it once. From the wiki directory:
 
