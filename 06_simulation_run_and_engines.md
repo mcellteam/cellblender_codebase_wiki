@@ -322,6 +322,25 @@ on success or the decoded stderr on failure. Invoked from the sweep-queue export
 (`cellblender_simulation.py:891`). The resulting `*_model.py` is then run as
 `python model.py -seed N` (§4 step 7).
 
+> **Generated `model.py` guards its execution block with
+> `if __name__ != '__mp_main__':`.** The converter emits the final
+> initialization/execution block wrapped in this guard so that a
+> `multiprocessing` **spawn** child — which re-imports `model.py` under
+> `__name__ == '__mp_main__'` — does not re-run the simulation. Without it, a
+> model whose `customization.py` `custom_init_and_run` launches subprocesses
+> (e.g. coupling MCell to NEURON over a `mp.Pipe`) recurses: each spawn child
+> re-executes the block, re-enters `custom_init_and_run`, and spawns again.
+> The guard uses `!= '__mp_main__'` (not `== '__main__'`) so both direct
+> execution (`'__main__'`) and MCell's checkpoint resume — which
+> `exec_module`s `model.py` under the module name `'model'` — still run. This
+> is a property of the **converter**, which lives in the *mcell* repo, not the
+> CellBlender add-on: `mcell/utils/data_model_to_pymcell/mcell4_generator.cpp`
+> (the "initialization and execution" section emitted by
+> `MCell4Generator::generate_model`). See the *mcell* codebase wiki
+> (`05_mcell_python_api_and_build.md`, §8 pointers) for the generator's source
+> map. `fork` (Linux default) copies memory instead of re-importing, so the
+> bug does not manifest there.
+
 **MCell3 vs MCell4 in one line:** MCell3 exports **MDL** and runs the `mcell` binary
 directly; MCell4 exports a **Python script** (via `data_model_to_pymcell`) and runs it under
 the CellBlender Python interpreter with `MCELL_PATH` set. The switch is the
