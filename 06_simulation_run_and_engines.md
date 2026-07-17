@@ -231,6 +231,15 @@ structure: each *subdirectory* containing an `__init__.py` is an engine (or runn
 every subfolder that has an `__init__.py` (:57-72), returning the module objects. Modules
 present:
 
+> **Blender add-on rule — an add-on must not mutate `sys.path`.** Discovery imports each
+> plugin with a *relative* `importlib.import_module(f'.{f}', package=__package__)`
+> (`sim_engine_manager/__init__.py:58`), which resolves inside the package and needs no
+> path manipulation. Blender explicitly forbids add-ons/extensions from appending to
+> `sys.path`: it pollutes the shared interpreter and breaks extension isolation. Earlier
+> versions of both `get_modules()` here **and** `data_plotters.find_plotting_options()`
+> (doc 05 §6) appended their package directory to `sys.path` before importing; those blocks
+> were redundant given the relative import and were removed in commit `90fe1f3`.
+
 | Dir | `plug_code` | `plug_name` |
 |-----|-------------|-------------|
 | `mcell3/` | `MCELL3` | MCell 3 with Dynamic Geometry |

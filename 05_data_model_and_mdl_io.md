@@ -376,11 +376,17 @@ subsystem (`cellblender_simulation.py:581`, `:1106`). Note the in-file comment t
 Briefly (reaction output proper is covered in doc 07): `data_plotters/` is a
 **plugin directory**. `find_plotting_options()` scans its own folder for
 subpackages, imports each, and keeps those whose `requirements_met()` returns True
-(`cellblender/data_plotters/__init__.py:43-85`). Shipped backends are subfolders,
+(`cellblender/data_plotters/__init__.py:43-75`). Shipped backends are subfolders,
 each a self-contained package exposing `get_name()` / `requirements_met()`:
 `mpl_plot`, `mpl_simple` (matplotlib), `gnuplot`, `xmgrace`, `java_plot`. They plot
 the column data MCell writes from `REACTION_DATA_OUTPUT` blocks (which
 `data_model_to_mdl.write_react_out`, `:2315`, generates).
+
+`find_plotting_options()` imports each backend with a *relative*
+`importlib.import_module(f'.{f}', package=__package__)`
+(`cellblender/data_plotters/__init__.py:67`) and must **not** modify `sys.path` — Blender
+forbids add-ons from doing so (see doc 06 §6 for the full rule; a redundant
+`sys.path.append` was removed here in commit `90fe1f3`).
 
 ---
 
