@@ -33,11 +33,11 @@ Every domain module follows the same five-part recipe:
 
 | Part | Convention | Example (molecules) |
 |---|---|---|
-| **Item PropertyGroup** | one row of data; defines `init_properties`, `remove_properties`, `build_data_model_from_properties`, `upgrade_data_model` (static), `build_properties_from_data_model` | `MCellMoleculeProperty` `cellblender/cellblender_molecules.py:846` |
-| **Collection PropertyGroup** | holds `CollectionProperty` + `active_*_index`; `add_*`/`remove_active_*` helpers; rolls each item's data model into a list dict | `MCellMoleculesListProperty` `cellblender/cellblender_molecules.py:2204` |
+| **Item PropertyGroup** | one row of data; defines `init_properties`, `remove_properties`, `build_data_model_from_properties`, `upgrade_data_model` (static), `build_properties_from_data_model` | `MCellMoleculeProperty` `cellblender/cellblender_molecules.py:876` |
+| **Collection PropertyGroup** | holds `CollectionProperty` + `active_*_index`; `add_*`/`remove_active_*` helpers; rolls each item's data model into a list dict | `MCellMoleculesListProperty` `cellblender/cellblender_molecules.py:2238` |
 | **Operators** | `MCELL_OT_*` add/remove/edit; thin wrappers that call collection helpers | `MCELL_OT_molecule_add` `cellblender/cellblender_molecules.py:177` |
-| **UIList** | `MCELL_UL_*` draws each row + status icon | `MCELL_UL_check_molecule` `cellblender/cellblender_molecules.py:1827` |
-| **Panel drawing** | `draw_layout(context, layout)` (and a `draw_panel` wrapper) | `cellblender/cellblender_molecules.py:2446` |
+| **UIList** | `MCELL_UL_*` draws each row + status icon | `MCELL_UL_check_molecule` `cellblender/cellblender_molecules.py:1861` |
+| **Panel drawing** | `draw_layout(context, layout)` (and a `draw_panel` wrapper) | `cellblender/cellblender_molecules.py:2480` |
 
 **Numeric fields are Parameter-backed.** Diffusion constants, rates, locations, diameters,
 quantities, clamp values, train timing — every quantity that can hold a units-bearing math
@@ -74,12 +74,12 @@ reactions, releases, and surface classes refer to by name.
 
 | Class | Role | Location |
 |---|---|---|
-| `MCellMolComponentProperty` | one BNGL **component** (binding site): `component_name`, `states_string`, `is_key`, and Parameter-backed `loc_x/y/z`, `rot_x/y/z`, `rot_ang`, `rot_index` | `cellblender/cellblender_molecules.py:684` |
-| `MCellMoleculeProperty` | one molecule **species** | `cellblender/cellblender_molecules.py:846` |
-| `MCellMoleculesListProperty` | the species collection (`molecule_list`, `active_mol_index`, `last_id`) | `cellblender/cellblender_molecules.py:2204` |
+| `MCellMolComponentProperty` | one BNGL **component** (binding site): `component_name`, `states_string`, `is_key`, and Parameter-backed `loc_x/y/z`, `rot_x/y/z`, `rot_ang`, `rot_index` | `cellblender/cellblender_molecules.py:714` |
+| `MCellMoleculeProperty` | one molecule **species** | `cellblender/cellblender_molecules.py:876` |
+| `MCellMoleculesListProperty` | the species collection (`molecule_list`, `active_mol_index`, `last_id`) | `cellblender/cellblender_molecules.py:2238` |
 | `MCellMolMakerPropertyGroup` is referenced here but lives in `cellblender_molmaker.py` (see §6) | | |
 
-Key `MCellMoleculeProperty` fields (`cellblender/cellblender_molecules.py:846-962`):
+Key `MCellMoleculeProperty` fields (`cellblender/cellblender_molecules.py:876-992`):
 - `name` (species name, `update=name_change_callback` at `:408`), `description`, `bnglLabel`.
 - `type` enum: `'2D'` = **Surface Molecule**, `'3D'` = **Volume Molecule** (`:883-890`).
 - `diffusion_constant`, `custom_time_step`, `custom_space_step`, `maximum_step_length` — all
@@ -105,24 +105,35 @@ Key `MCellMoleculeProperty` fields (`cellblender/cellblender_molecules.py:846-96
 
 ### Glyph / mesh creation
 
-`create_mol_data` (`cellblender/cellblender_molecules.py:1027`) builds the actual Blender mesh
+`create_mol_data` (`cellblender/cellblender_molecules.py:1057`) builds the actual Blender mesh
 object (`mol_<name>` / `mol_<name>_shape`) for a species, calling
-`cellblender_glyphs.get_named_shape(glyph_name, …)` (`:1027` body, imported at `:80`) to obtain
+`cellblender_glyphs.get_named_shape(glyph_name, …)` (`:1057` body, imported at `:80`) to obtain
 the vertex/face geometry — this is the bridge into §7 (glyphs). `set_mol_glyph`
-(`cellblender/cellblender_molecules.py:1709`) swaps the mesh by selecting the mol object and
+(`cellblender/cellblender_molecules.py:1743`) swaps the mesh by selecting the mol object and
 delegating to the module-level `set_molecule_glyph` (`:94`), which links the glyph mesh from
 `glyph_library.blend`.
+
+> **Blender-API note — deleting the old glyph object.** When rebuilding a glyph,
+> `create_mol_data` deletes the previous shape object with `bpy.data.objects.remove()`,
+> which already unlinks it from *all* collections. The explicit
+> `collection.objects.unlink(obj)` that precedes it is only valid when the object is
+> actually linked to *that* collection — Blender 4.x/5.x raise
+> `RuntimeError: Object '…' not in collection` otherwise — so it is guarded by an
+> `obj in scn_objs` membership check at all three call sites
+> (`cellblender/cellblender_molecules.py:284, 369, 1097`). Without the guard,
+> opening/upgrading an older project under Blender 5.1 aborts the whole
+> `build_properties_from_data_model` rebuild.
 
 ### Data model
 
 `MCellMoleculeProperty.build_data_model_from_properties`
-(`cellblender/cellblender_molecules.py:1213`) emits `mol_name`, `mol_type`, `diffusion_constant`
+(`cellblender/cellblender_molecules.py:1247`) emits `mol_name`, `mol_type`, `diffusion_constant`
 (expr string), `target_only`, the step fields, a `bngl_component_list`, and a nested `display`
 dict (glyph/letter/color/scale). Version tag `DM_2018_10_16_1632`. The list group's
-`build_data_model_from_properties` (`:2348`) wraps all species into `molecule_list` **and folds
+`build_data_model_from_properties` (`:2382`) wraps all species into `molecule_list` **and folds
 in the MolMaker dict** (`mol_dm['molmaker'] = molmaker.build_data_model_from_properties()` at
-`:2357`). `upgrade_data_model` (`:1259`, `:2362`) chains version migrations. Registration of all
-classes is at `cellblender/cellblender_molecules.py:2486-2510`.
+`:2391`). `upgrade_data_model` (`:1293`, `:2396`) chains version migrations. Registration of all
+classes is at `cellblender/cellblender_molecules.py:2520-2544`.
 
 > **Gotcha:** `add_molecule` (`:2252`) has a `mol_viz.molecule_read_in` branch that imports
 > species names from already-loaded visualization objects (`bpy.data.objects['molecules']`),
@@ -318,7 +329,7 @@ Operators, or panels — it is a procedural mesh factory.
 
 **How glyphs attach to molecules:** a species' `glyph` enum (and `letter` enum for `Letter`,
 §2 `:915-957`) chooses the shape. `MCellMoleculeProperty.create_mol_data`
-(`cellblender/cellblender_molecules.py:1027`) calls `cellblender_glyphs.get_named_shape(...)` to
+(`cellblender/cellblender_molecules.py:1057`) calls `cellblender_glyphs.get_named_shape(...)` to
 generate the mesh for the `mol_<name>_shape` object, and the glyph/letter/color/scale are stored
 in the species' `display` data-model dict (§2 `:1242-1253`). (The alternative path,
 `set_molecule_glyph` at `:94`, links a glyph mesh out of `glyph_library.blend` instead of
@@ -333,14 +344,18 @@ see `07_*`.
   `reactants`/`products` (`cellblender/cellblender_reactions.py:308-316`); release sites via
   `molecule` (`cellblender/cellblender_release.py:369`); surface classes via `molecule`
   (`cellblender/cellblender_surface_classes.py:248`). Renaming a species does **not** auto-update
-  these references — `name_change_callback` (`cellblender/cellblender_molecules.py:408`) handles
+  these references — `name_change_callback` (`cellblender/cellblender_molecules.py:416`) handles
   the species' own Blender objects, but downstream string references must be re-validated by each
-  domain's `check_*` callback.
+  domain's `check_*` callback. Because Blender auto-appends `.001` when a rename targets a name
+  that is already taken, `name_change_callback` first clears any **stale** datablocks occupying the
+  destination `mol_<newname>*` name before renaming onto it (guarded so a genuine, user-created
+  duplicate-named species is left untouched). Without that clearing, a data-model upgrade that
+  leaves behind old `mol_<name>*` objects produces spurious `mol_<name>_shape.001` duplicates.
 - **All numeric chemistry quantities are Parameter-backed** (`Parameter_Reference` PointerProperty
   + `init_ref`/`get_expr`/`set_expr`/`clear_ref`); the data model stores expression *strings*. See
   `04_*`.
 - **`@ surface_class` in a reaction** ties reactions (§3) to surface classes (§5) by name.
-- **MolMaker rides inside the molecules data model** (`cellblender/cellblender_molecules.py:2357`),
+- **MolMaker rides inside the molecules data model** (`cellblender/cellblender_molecules.py:2391`),
   not under its own top-level key.
 - **No per-domain Panel classes** — the shared main panel calls each group's `draw_layout`
   (`cellblender/cellblender_main.py:794-831`).

@@ -184,10 +184,10 @@ Domains never store a number directly when it should be parameter-aware. They st
 Typical embedding (molecules):
 
 ```python
-# cellblender/cellblender_molecules.py:891
+# cellblender/cellblender_molecules.py:921
 diffusion_constant: PointerProperty(name="...", type=parameter_system.Parameter_Reference)
 # ...initialized once:
-# cellblender/cellblender_molecules.py:980
+# cellblender/cellblender_molecules.py:1010
 self.diffusion_constant.init_ref(parameter_system, user_name="Diffusion Constant",
                                  user_expr="0", user_units="cm^2/sec", user_descr=helptext)
 ```
@@ -205,7 +205,7 @@ The `Parameter_Reference` API (all in `parameter_system.py`):
 
 Domains call `ref.get_value()` at simulation/export time, `ref.get_expr()` when serializing
 to a data model, and `ref.set_expr(...)` when loading one (see molecule example:
-`cellblender/cellblender_molecules.py:1236, 1395`). Other embedders include
+`cellblender/cellblender_molecules.py:1270, 1419`). Other embedders include
 `cellblender_reactions.py`, `cellblender_release.py`, `cellblender_initialization.py`,
 `cellblender_surface_classes.py`, `cellblender_reaction_output.py`, `cellblender_mol_viz.py`,
 `cellblender_simulation.py`.
@@ -323,7 +323,7 @@ The parameter system serializes to the CellBlender data model under the
 
 **Panel parameters are *not* serialized by the parameter system.** Each is serialized by its
 *owning* domain as a plain string via `ref.get_expr()` and restored via `ref.set_expr()`
-(e.g. molecule `diffusion_constant` in `cellblender/cellblender_molecules.py:1236,1395`).
+(e.g. molecule `diffusion_constant` in `cellblender/cellblender_molecules.py:1270,1419`).
 The `Parameter_Reference` / `p#` key itself is transient and re-allocated by `init_ref` on
 load — only the expression text persists.
 

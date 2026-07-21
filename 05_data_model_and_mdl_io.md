@@ -126,7 +126,7 @@ each marking a schema change in some domain.
 At the top level that is `dm['data_model_version'] = "DM_2017_06_23_1300"`
 (`cellblender/cellblender_main.py:1002`). Each domain hard-codes **its own**
 current version independently — e.g. molecules emit `"DM_2018_10_16_1632"`
-(`cellblender/cellblender_molecules.py:1216`). So a single saved model is a tree of
+(`cellblender/cellblender_molecules.py:1250`). So a single saved model is a tree of
 fragments, **each with its own version stamp**.
 
 ### How upgrade dispatch works
@@ -143,7 +143,7 @@ fragments, **each with its own version stamp**.
    a `None` return aborts the whole upgrade (`:1063-1159`).
 
 Each domain repeats the same **stepwise `if`-cascade** pattern internally. The
-molecule upgrader (`cellblender/cellblender_molecules.py:1259-1369`) is the
+molecule upgrader (`cellblender/cellblender_molecules.py:1293-1403`) is the
 canonical example — it walks a chain of ~10 versions, applying one incremental
 mutation per step:
 
@@ -396,7 +396,7 @@ forbids add-ons from doing so (see doc 06 §6 for the full rule; a redundant
 |------|------|
 | `cellblender/data_model.py` | Core: serialization, save/load operators, `@persistent` save_pre/load_post handlers, upgrade drivers, Tk browser |
 | `cellblender/cellblender_main.py:998-1161` | Top-level `build_*`/`upgrade_data_model` orchestration over all domains |
-| `cellblender/cellblender_molecules.py:1259-1369` | Canonical per-domain stepwise upgrade cascade |
+| `cellblender/cellblender_molecules.py:1293-1403` | Canonical per-domain stepwise upgrade cascade |
 | `cellblender/io_mesh_mcell_mdl/` | Mesh-level MDL import (SWIG + pyparsing fallback) and legacy properties→MDL export |
 | `cellblender/io_mesh_mcell_mdl/pyparsing.py` | Vendored third-party pyparsing (do not edit) |
 | `cellblender/mdl/data_model_to_mdl.py` | data-model→full MDL generator (MCell3 / MCell3-R run path) |
